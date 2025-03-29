@@ -29,6 +29,7 @@ public class Game extends JPanel implements ActionListener {
 
         player = new Player(100, 100, this);
         currentRoom = new Room();
+        enemies = new ArrayList<>(currentRoom.generateEnemies(5)); // or any number        
         enemies = new ArrayList<>();
         projectiles = new ArrayList<>();
 

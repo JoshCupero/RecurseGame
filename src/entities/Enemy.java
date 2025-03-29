@@ -37,4 +37,5 @@ public class Enemy {
     public boolean isAlive() {
         return health > 0;
     }
+
 }

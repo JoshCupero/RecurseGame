@@ -4,6 +4,7 @@ import java.awt.*;
 
 import main.Game;
 import main.InputHandler;
+import stats.GameStats;
 
 public class Player {
     private int x, y;
@@ -32,6 +33,7 @@ public class Player {
 
             game.shootProjectile(x + 16, y + 16, dx, dy);
             InputHandler.shoot = false;
+            GameStats.shotsFired++;
         }
     }
 
