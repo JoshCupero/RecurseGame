@@ -39,7 +39,7 @@ public class InputHandler implements KeyListener {
                     right = false;
                     break;
                 case KeyEvent.VK_SPACE:
-                    shoot = false; // ✅ Add this line
+                    shoot = false;
                     break;
             }
         }

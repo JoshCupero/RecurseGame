@@ -1,7 +1,6 @@
 package entities;
 
 import java.awt.*;
-// Removed unused import for entities.Enemy
 
 public class Projectile {
     private int x, y;
@@ -18,8 +17,8 @@ public class Projectile {
     public void update() {
         x += dx;
         y += dy;
-        lifespan--;
     }
+    
 
     public void draw(Graphics g) {
         g.setColor(Color.YELLOW);

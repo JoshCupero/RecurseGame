@@ -1,4 +1,3 @@
-// Enemy.java
 package entities;
 
 import java.awt.*;
@@ -15,30 +14,31 @@ public class Enemy {
     private int x, y;
     private int speed = 2;
     private int health = 3;
-    private BufferedImage sprite;
+    protected MovementType type;
     private DropCallback dropCallback;
-    private MovementType type;
     private int zigzagTimer = 0;
     private int wanderTimer = 0;
+    protected BufferedImage sprite;
+
 
     public Enemy(int x, int y, MovementType type) {
         this.x = x;
         this.y = y;
         this.type = type;
+    }
+
+    public void loadDefaultSprite() {
         try {
             sprite = ImageIO.read(getClass().getResource("/assets/enemy.png"));
         } catch (IOException | IllegalArgumentException e) {
             e.printStackTrace();
-            sprite = null;
         }
     }
 
     public static boolean isTooClose(int x, int y, List<Enemy> others, int minDistance) {
         for (Enemy other : others) {
             double dist = Math.hypot(x - other.x, y - other.y);
-            if (dist < minDistance) {
-                return true;
-            }
+            if (dist < minDistance) return true;
         }
         return false;
     }
@@ -53,6 +53,7 @@ public class Enemy {
                 if (player.getY() > y) dy = speed;
                 if (player.getY() < y) dy = -speed;
                 break;
+
             case ZIGZAGGER:
                 zigzagTimer++;
                 if (player.getX() > x) dx = speed;
@@ -61,6 +62,7 @@ public class Enemy {
                     dy = (Math.random() > 0.5) ? speed : -speed;
                 }
                 break;
+
             case WANDERER:
                 wanderTimer++;
                 if (distanceTo(player) < 200) {
@@ -107,15 +109,8 @@ public class Enemy {
         if (sprite != null) {
             g.drawImage(sprite, x, y, 64, 64, null);
         } else {
-            g.setColor(Color.RED);
-            g.fillRect(x, y, 64, 64);
-        }
-    }
 
-    public boolean collidesWith(int px, int py, int pw, int ph) {
-        Rectangle r1 = new Rectangle(x, y, 64, 64);
-        Rectangle r2 = new Rectangle(px, py, pw, ph);
-        return r1.intersects(r2);
+        }
     }
 
     public void takeDamage(int dmg) {
@@ -129,17 +124,28 @@ public class Enemy {
         return health > 0;
     }
 
+    public boolean collidesWith(int px, int py, int pw, int ph) {
+        Rectangle r1 = new Rectangle(x, y, 64, 64);
+        Rectangle r2 = new Rectangle(px, py, pw, ph);
+        return r1.intersects(r2);
+    }
+
     public void setDropCallback(DropCallback callback) {
         this.dropCallback = callback;
     }
 
-    public interface DropCallback {
-        void dropItem(int x, int y);
+    public void setHealth(int h) {
+        this.health = h;
     }
 
     public int getHealth() {
-    return health;
-}
+        return health;
+    }
+
     public int getX() { return x; }
     public int getY() { return y; }
+
+    public interface DropCallback {
+        void dropItem(int x, int y);
+    }
 }

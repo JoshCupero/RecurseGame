@@ -26,7 +26,7 @@ public class Item {
 
     public void draw(Graphics g) {
         if (sprite != null)
-            g.drawImage(sprite, x, y, 24, 24, null);
+            g.drawImage(sprite, x, y, 64, 64, null);
         else {
             g.setColor(type == Type.AMMO ? Color.YELLOW : Color.GREEN);
             g.fillRect(x, y, 24, 24);
@@ -43,4 +43,17 @@ public class Item {
 
     public int getX() { return x; }
     public int getY() { return y; }
+
+    public void collect(Player player) {
+        switch (type) {
+            case AMMO:
+                player.addAmmo(20);
+            break;
+            case MEDKIT:
+                player.heal(30);
+                break;
+        
+            
+        }
+    }
 }

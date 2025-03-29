@@ -14,6 +14,9 @@ public class Player {
     private int health = 100;
     private Game game;
     private Image sprite;
+    private int ammo = 20;
+    private final int maxAmmo = 99;
+
 
     public Player(int x, int y, Game game) {
         this.x = x;
@@ -42,7 +45,12 @@ public class Player {
             else if (InputHandler.right) dx = 8;
             else dy = -8;
 
-            game.shootProjectile(x + 24, y + 32, dx, dy);
+            if (hasAmmo()) {
+                game.shootProjectile(x + 16, y + 16, dx, dy);
+                useAmmo();
+                GameStats.shotsFired++;
+            }
+            
             InputHandler.shoot = false;
             GameStats.shotsFired++;
         }
@@ -62,7 +70,10 @@ public class Player {
     }
 
     public void takeDamage(int dmg) {
-        health = Math.max(0, health - dmg);
+        if (canBeHit()) {
+            health = Math.max(0, health - dmg);
+            damageCooldown = 30;
+        }
     }
 
     public int getX() {
@@ -80,7 +91,28 @@ public void tickCooldown() {
 }
 
 public boolean canBeHit() {
-    return damageCooldown == 0;
+    return damageCooldown <= 0;
+}
+
+public void heal(int amount) {
+    health = Math.min(100, health + amount);
+}
+
+public boolean hasAmmo() {
+    return ammo > 0;
+}
+
+public void useAmmo() {
+    if (ammo > 0) ammo--;
+}
+
+
+public void addAmmo(int amount) {
+    ammo = Math.min(ammo + amount, maxAmmo);
+}
+
+public int getAmmo() {
+    return ammo;
 }
 
 }
