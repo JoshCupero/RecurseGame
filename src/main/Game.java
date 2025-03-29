@@ -1,62 +1,131 @@
+// Game.java
 package main;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.KeyboardFocusManager;
 import java.util.ArrayList;
 import java.util.Iterator;
-import javax.swing.Timer;
+import entities.*;
+import world.*;
+import stats.GameStats;
 
-import entities.Enemy;
-import entities.Player;
-import entities.Projectile;
-import world.Room;
-
-import javax.swing.JPanel;
-import javax.swing.JFrame;
-
-public class Game extends JPanel implements ActionListener {
+public class Game extends JPanel implements ActionListener, MouseMotionListener, MouseListener {
     private Timer timer;
     private Player player;
     private Room currentRoom;
     private ArrayList<Enemy> enemies;
     private ArrayList<Projectile> projectiles;
+    private ArrayList<Item> items;
+    private Image background;
+    private int mouseX, mouseY;
+    private int screenShake = 0;
+    private boolean flashRed = false;
+    private boolean inTitleScreen = true;
+    private int gracePeriod = 120;
 
     public Game() {
         setPreferredSize(new Dimension(800, 600));
         setFocusable(true);
+        addMouseMotionListener(this);
+        addMouseListener(this);
+        requestFocus();
+
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+            if (inTitleScreen && e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_ENTER) {
+                startGame();
+                return true;
+            }
+            return false;
+        });
+
+        timer = new Timer(16, this);
+        timer.start();
+    }
+
+    private void startGame() {
         InputHandler inputHandler = new InputHandler();
         addKeyListener(inputHandler);
+        requestFocus();
 
-        player = new Player(100, 100, this);
+        player = new Player(400 - 24, 300 - 32, this);
         currentRoom = new Room();
-        enemies = new ArrayList<>(currentRoom.generateEnemies(5)); // or any number        
         enemies = new ArrayList<>();
         projectiles = new ArrayList<>();
+        items = new ArrayList<>();
 
-        // Spawn some enemies for demo
-        enemies.add(new Enemy(400, 300));
-        enemies.add(new Enemy(600, 200));
+        try {
+            background = javax.imageio.ImageIO.read(getClass().getResource("/assets/background.png"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-        timer = new Timer(16, this); // ~60 FPS
+        spawnEnemies(10);
+        inTitleScreen = false;
+        gracePeriod = 120;
+    }
+
+    private void spawnEnemies(int count) {
+        for (int i = 0; i < count; i++) {
+            int x, y;
+            int attempts = 0;
+            do {
+                x = (int)(Math.random() * 700);
+                y = (int)(Math.random() * 500);
+                attempts++;
+                if (attempts > 100) break;
+            } while (Enemy.isTooClose(x, y, enemies, 150) || new Rectangle(x, y, 64, 64).intersects(new Rectangle(376, 268, 48, 64)));
+
+            Enemy.MovementType type = Enemy.MovementType.values()[(int)(Math.random() * Enemy.MovementType.values().length)];
+            Enemy e = new Enemy(x, y, type);
+            e.setDropCallback((dropX, dropY) -> {
+                double r = Math.random();
+                if (r < 0.3) items.add(new Item(dropX, dropY, Item.Type.AMMO));
+                else if (r < 0.6) items.add(new Item(dropX, dropY, Item.Type.MEDKIT));
+            });
+            enemies.add(e);
+        }
     }
 
     public void start() {
-        JFrame frame = new JFrame("Recurse");
+        JFrame frame = new JFrame("CYBERROT: FOREST OF THE DAMNED");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setUndecorated(true);
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice gd = ge.getDefaultScreenDevice();
+        frame.setResizable(false);
+        gd.setFullScreenWindow(frame);
         frame.setContentPane(this);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
-
-        timer.start();
+        requestFocus();
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (inTitleScreen) {
+            repaint();
+            return;
+        }
+
         player.update();
+        player.tickCooldown();
+
+        if (gracePeriod > 0) gracePeriod--;
 
         for (Enemy enemy : enemies) {
-            enemy.update(player);
+            enemy.update(player, enemies);
+        }
+
+        for (Enemy enemy : enemies) {
+            if (new Rectangle(enemy.getX(), enemy.getY(), 64, 64)
+                    .intersects(new Rectangle(player.getX(), player.getY(), 48, 64))) {
+                if (gracePeriod <= 0 && player.canBeHit()) {
+                    player.takeDamage(10);
+                    screenShake = 10;
+                    flashRed = true;
+                }
+            }
         }
 
         Iterator<Projectile> projIterator = projectiles.iterator();
@@ -78,19 +147,120 @@ public class Game extends JPanel implements ActionListener {
 
         enemies.removeIf(enemy -> !enemy.isAlive());
 
+        if (screenShake > 0) screenShake--;
+        if (flashRed) flashRed = false;
+
         repaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        currentRoom.draw(g);
-        player.draw(g);
-        for (Enemy enemy : enemies) enemy.draw(g);
-        for (Projectile p : projectiles) p.draw(g);
+
+        if (inTitleScreen) {
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, getWidth(), getHeight());
+            g.setColor(Color.RED);
+            Font titleFont = new Font("Monospaced", Font.BOLD, 32);
+            g.setFont(titleFont);
+            FontMetrics fm = g.getFontMetrics(titleFont);
+            String line1 = "CYBERROT";
+            String line2 = "FOREST OF THE DAMNED";
+            int x1 = (getWidth() - fm.stringWidth(line1)) / 2;
+            int x2 = (getWidth() - fm.stringWidth(line2)) / 2;
+            g.drawString(line1, x1, 200);
+            g.drawString(line2, x2, 250);
+            Font promptFont = new Font("Monospaced", Font.PLAIN, 20);
+            g.setFont(promptFont);
+            FontMetrics pfm = g.getFontMetrics(promptFont);
+            String prompt = "Press ENTER to Start";
+            int px = (getWidth() - pfm.stringWidth(prompt)) / 2;
+            g.setColor(Color.WHITE);
+            g.drawString(prompt, px, 350);
+            return;
+        }
+
+        Graphics2D g2d = (Graphics2D) g.create();
+        if (screenShake > 0) {
+            int offsetX = (int)(Math.random() * 8 - 4);
+            int offsetY = (int)(Math.random() * 8 - 4);
+            g2d.translate(offsetX, offsetY);
+        }
+
+        if (background != null) {
+            g2d.drawImage(background, 0, 0, getWidth(), getHeight(), null);
+        }
+
+        currentRoom.draw(g2d);
+        player.draw(g2d);
+        for (Item item : items) item.draw(g2d);
+        for (Enemy enemy : enemies) {
+            enemy.draw(g2d);
+            int barWidth = 64;
+            int barHeight = 6;
+            int barX = enemy.getX();
+            int barY = enemy.getY() - 10;
+            double healthPercent = Math.max(0, enemy.getHealth() / 3.0);
+            g2d.setColor(Color.DARK_GRAY);
+            g2d.fillRect(barX, barY, barWidth, barHeight);
+            g2d.setColor(Color.RED);
+            g2d.fillRect(barX, barY, (int)(barWidth * healthPercent), barHeight);
+        }
+        for (Projectile p : projectiles) p.draw(g2d);
+
+        g2d.setColor(Color.RED);
+        g2d.drawLine(mouseX - 5, mouseY, mouseX + 5, mouseY);
+        g2d.drawLine(mouseX, mouseY - 5, mouseX, mouseY + 5);
+
+        int playerBarWidth = 200;
+        int playerBarHeight = 20;
+        int playerBarX = 20;
+        int playerBarY = getHeight() - 40;
+        g2d.setColor(Color.DARK_GRAY);
+        g2d.fillRect(playerBarX, playerBarY, playerBarWidth, playerBarHeight);
+        g2d.setColor(Color.GREEN);
+        g2d.fillRect(playerBarX, playerBarY, (int)(playerBarWidth * (player.getHealth() / 100.0)), playerBarHeight);
+        g2d.setColor(Color.WHITE);
+        g2d.drawRect(playerBarX, playerBarY, playerBarWidth, playerBarHeight);
+
+        g2d.dispose();
+
+        if (flashRed) {
+            g.setColor(new Color(255, 0, 0, 100));
+            g.fillRect(0, 0, getWidth(), getHeight());
+        }
     }
 
     public void shootProjectile(int x, int y, int dx, int dy) {
         projectiles.add(new Projectile(x, y, dx, dy));
     }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        mouseX = e.getX();
+        mouseY = e.getY();
+    }
+
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        mouseMoved(e);
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if (!inTitleScreen && e.getButton() == MouseEvent.BUTTON1) {
+            int dx = mouseX - (player.getX() + 32);
+            int dy = mouseY - (player.getY() + 32);
+            double length = Math.hypot(dx, dy);
+            dx = (int)(dx / length * 8);
+            dy = (int)(dy / length * 8);
+            shootProjectile(player.getX() + 32, player.getY() + 32, dx, dy);
+            GameStats.shotsFired++;
+        }
+    }
+
+    @Override public void mousePressed(MouseEvent e) {}
+    @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
 }

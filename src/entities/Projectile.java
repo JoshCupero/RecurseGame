@@ -1,6 +1,7 @@
 package entities;
 
 import java.awt.*;
+// Removed unused import for entities.Enemy
 
 public class Projectile {
     private int x, y;
