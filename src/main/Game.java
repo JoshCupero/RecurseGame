@@ -393,7 +393,7 @@ if (bossFightStarted && !enemies.isEmpty()) {
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
+    public void mousePressed(MouseEvent e) {
         if (!inTitleScreen && e.getButton() == MouseEvent.BUTTON1) {
             int dx = mouseX - (player.getX() + 24);
 int dy = mouseY - (player.getY() + 32); 
@@ -417,7 +417,8 @@ dy = (int)(dy / length * 8);
         }
         
 
-    @Override public void mousePressed(MouseEvent e) {}
+    // Removed duplicate mousePressed method
+    @Override public void mouseClicked(MouseEvent e) {}
     @Override public void mouseReleased(MouseEvent e) {}
     @Override public void mouseEntered(MouseEvent e) {}
     @Override public void mouseExited(MouseEvent e) {}
